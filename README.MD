@@ -229,7 +229,7 @@ Stores support escalation requests.
 
 ## PostgreSQL Database
 
-![Database](postgresql db.png)
+![Database](postgresql_db.png)
 
 ---
 
