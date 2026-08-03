@@ -1,0 +1,473 @@
+{
+  "name": "e-commerce bot",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "3081ad83-58f8-4126-a8de-694f9780d197",
+      "name": "Manual Trigger - Index FAQ PDF",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "C:\\Users\\dhine\\.n8n-files\\abc_co_rag.pdf",
+        "options": {}
+      },
+      "id": "a5c23e83-9a41-4f4d-b791-0e7ef90e80e2",
+      "name": "Read FAQ PDF",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "alwaysOutputData": true,
+      "notes": "Contains policy text: return policy, refund policy, shipping policy, etc. Swap for HTTP Request/Google Drive node if the FAQ source isn't a local file."
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": {
+          "__rl": true,
+          "value": "faq_vector_key",
+          "mode": "list",
+          "cachedResultName": "faq_vector_key"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        192,
+        0
+      ],
+      "id": "bda78d2d-5a33-4324-b4f5-215e94817589",
+      "name": "FAQ Vector Store (Insert)",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        128
+      ],
+      "id": "56e1abdc-600e-4d3c-95e5-fb6072b51513",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        224,
+        256
+      ],
+      "id": "e6742dc8-7066-4ac2-af76-47b65b742c21",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "hq4xocHcg17JIdBT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are the AI Router/orchestrator for ABC Co.'s customer support chat — a Flipkart/Amazon-style shopping assistant. You have five capabilities, each backed by a tool. Detect the user's intent and call the matching tool. Never guess data — always call a tool for anything factual.\n\nINTENTS & TOOLS:\n1. FAQ / policy questions (e.g. 'what is your return policy', 'how long is delivery') -> use 'FAQ Knowledge Base' tool.\n2. Order tracking (e.g. 'where is my order', 'where is my package') -> if the user hasn't given an Order ID yet, ASK for it first ('Please provide your Order ID.'). Once given, call 'Track Order' tool with that ID. Report status and expected delivery in plain, friendly language.\n3. Product questions (e.g. 'do you have X in stock', 'tell me about product Y') -> use 'Product Info' tool.\n4. Returns/refunds (e.g. 'I want to return this', 'where is my refund') -> if no Order ID given, ask for it. Then call 'Return Refund Status' tool.\n5. Anything you cannot resolve with the above tools, or if the user explicitly asks for a human -> say: 'I couldn't resolve this issue. Would you like to talk with a support agent? (Yes/No)'. If they say yes, call 'Create Support Ticket' tool to log it, then call 'Notify Human Support' tool to alert the team, and confirm to the user with a ticket number and that a human will follow up.\n\nSTYLE RULES:\n- Keep replies short, warm, and conversational — like a helpful shopping app assistant, not a formal report.\n- Never fabricate order status, stock, or policy details — only state what a tool returned.\n- If a tool returns no matching record, say so plainly and offer escalation.\n- Always remember context from earlier in the conversation (e.g. an Order ID already given) using the conversation memory before asking for it again."
+        }
+      },
+      "id": "fea70a8c-308a-4168-9b18-33a36690b00d",
+      "name": "Router AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 15
+      },
+      "id": "b5fe0ec5-b461-4136-9c4b-c2699c7bac52",
+      "name": "Conversation Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        944,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Searches ABC Co.'s FAQ/policy knowledge base (return policy, refund policy, shipping timelines, general company questions). Use for any policy or general knowledge question that is NOT about a specific order, product, or account.",
+        "memoryKey": {
+          "__rl": true,
+          "mode": "list",
+          "value": "faq_vector_key"
+        },
+        "topK": 79
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        912,
+        288
+      ],
+      "id": "81c65bb7-26e5-4411-b326-0e80fc73fe0b",
+      "name": "FAQ Knowledge Base Tool"
+    },
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Hi! 👋 Welcome to ABC Co. Support.\nHow can I help you today?\n📦 Track Order\n↩️ Return Product\n💸 Refund Status\n🛍️ Product Info\n🎧 Talk to Support\nJust type one of these, or ask me anything!",
+        "options": {
+          "inputPlaceholder": "Type your question... e.g. Track Order",
+          "loadPreviousSession": "memory",
+          "subtitle": "Typically replies in a few seconds 🛍️",
+          "title": "ABC Co. Support Assistant",
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "bed5d57e-ef10-44b0-b41a-fdcd0e166e9c",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        496,
+        16
+      ],
+      "webhookId": "ecommerce-support-webhook"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        512,
+        144
+      ],
+      "id": "4826b47d-39fd-4856-a684-d490dc164b9a",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    o.order_id,\n    o.status,\n    o.expected_delivery,\n    o.order_date,\n    p.name AS product_name\nFROM orders o\nJOIN products p\n    ON p.product_id = o.product_id\nWHERE lower(o.order_id) = '{{ $fromAI(\"order_id\", \"Customer order ID such as ORD12345\", \"string\") }}'\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1392,
+        288
+      ],
+      "id": "8bd77b73-9584-4e4e-a359-5c17739dee48",
+      "name": "track order total",
+      "credentials": {
+        "postgres": {
+          "id": "BTQ1kTqbT1qvyPO7",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT product_id, name, description, price, stock\nFROM products\nWHERE name ILIKE '%' || '{{ $fromAI('product_name', 'Product name or keyword the customer asked about', 'string') }}' || '%'\nLIMIT 5;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1280,
+        240
+      ],
+      "id": "b3082e07-cb8f-4b40-b955-205b84cba0f8",
+      "name": "product info tool",
+      "credentials": {
+        "postgres": {
+          "id": "BTQ1kTqbT1qvyPO7",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT return_id, order_id, status, refund_amount, requested_date\nFROM returns\nWHERE lower(order_id) = '{{ $fromAI('order_id', 'The order ID the customer provided for their return/refund', 'string') }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1168,
+        336
+      ],
+      "id": "198e51ff-bd52-4ad6-b9b5-797672cf83ab",
+      "name": "return refund status tool",
+      "credentials": {
+        "postgres": {
+          "id": "BTQ1kTqbT1qvyPO7",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO tickets (customer_message, issue_summary, status, created_at)\nVALUES (\n  '{{ $fromAI('customer_message', 'The verbatim message or issue the customer described', 'string') }}',\n  '{{ $fromAI('issue_summary', 'A one-sentence summary of the unresolved issue', 'string') }}',\n  'open',\n  now()\n)\nRETURNING ticket_id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1472,
+        160
+      ],
+      "id": "bbdcc713-2ac5-451d-9586-c119ae803dfa",
+      "name": "create support ticket tool",
+      "credentials": {
+        "postgres": {
+          "id": "BTQ1kTqbT1qvyPO7",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "client@gmail.com",
+        "subject": "={{ 'New Escalation - Ticket ' + $fromAI('ticket_id', 'The ticket ID just created', 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', `Summary of the customer issue and conversation so far, for the human agent to review`, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        1472,
+        -16
+      ],
+      "id": "d6c2f5a7-cbfe-4529-ac1c-3babf723f073",
+      "name": "notify human support",
+      "webhookId": "61f5db3c-8ed8-4598-aea9-9a5c632af113",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "I1dUCs2rjSTAp61A",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        832,
+        144
+      ],
+      "id": "28cbf1ca-bee0-474b-8c94-aac3d5d2f507",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "hq4xocHcg17JIdBT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger - Index FAQ PDF": {
+      "main": [
+        [
+          {
+            "node": "Read FAQ PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read FAQ PDF": {
+      "main": [
+        [
+          {
+            "node": "FAQ Vector Store (Insert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "FAQ Vector Store (Insert)",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "FAQ Vector Store (Insert)",
+            "type": "ai_embedding",
+            "index": 0
+          },
+          {
+            "node": "FAQ Knowledge Base Tool",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Router AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FAQ Knowledge Base Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Router AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Router AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chat Trigger",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "track order total": {
+      "ai_tool": [
+        [
+          {
+            "node": "Router AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "product info tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Router AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "return refund status tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Router AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create support ticket tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Router AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "notify human support": {
+      "ai_tool": [
+        [
+          {
+            "node": "Router AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Router AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b7503a25-d8f2-4954-93ab-afbc3a13bbea",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "61b902dd7bc0437ff850dc774b308b19a1c64d4656575fd97a6add1ae079d86c"
+  },
+  "nodeGroups": [],
+  "id": "tu4lbPZ3gzumiYir",
+  "tags": []
+}
