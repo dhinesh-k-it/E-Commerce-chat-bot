@@ -379,7 +379,7 @@ AI Agent
 
 # 👨‍💻 Author
 
-### Dhineshwar S
+### Dhinesh
 
 AI Automation Engineer | n8n Developer | GenAI Enthusiast
 
