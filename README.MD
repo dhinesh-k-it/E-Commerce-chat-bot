@@ -223,7 +223,9 @@ Stores support escalation requests.
 
 ## Chatbot Interface
 
-![Chatbot](images/chatbot.png)
+![Chatbot](order_status_chat.png)
+
+![Chatbot](support_ticket_chat.png)
 
 ---
 
@@ -231,11 +233,7 @@ Stores support escalation requests.
 
 ![Database](postgresql_db.png)
 
----
-
-## Vector Store
-
-![Vector Store](images/vectorstore.png)
+![Database](ticket_table.png)
 
 ---
 
