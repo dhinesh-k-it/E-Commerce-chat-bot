@@ -1,7 +1,7 @@
 # 🛒 E-Commerce AI Support Chatbot
 
 <p align="center">
-  <img src="images/chatbot-banner.png" alt="E-Commerce AI Support Chatbot" width="900">
+  <img src="bot banner.png" alt="E-Commerce AI Support Chatbot" width="900">
 </p>
 
 <p align="center">
@@ -217,7 +217,7 @@ Stores support escalation requests.
 
 ## Workflow
 
-![Workflow](images/workflow.png)
+![Workflow](e-commerce workflow.png)
 
 ---
 
@@ -229,7 +229,7 @@ Stores support escalation requests.
 
 ## PostgreSQL Database
 
-![Database](images/database.png)
+![Database](postgresql db.png)
 
 ---
 
