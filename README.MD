@@ -217,7 +217,7 @@ Stores support escalation requests.
 
 ## Workflow
 
-![Workflow](e-commerce workflow.png)
+![Workflow](e-commerceworkflow.png)
 
 ---
 
